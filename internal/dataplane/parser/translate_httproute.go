@@ -68,11 +68,6 @@ func ingressRulesFromHTTPRoute(result *ingressRules, httproute *gatewayv1alpha2.
 			return fmt.Errorf("missing backendRef in rule")
 		}
 
-		// TODO: support multiple backend refs
-		if len(rule.BackendRefs) > 1 {
-			return fmt.Errorf("multiple backendRefs are not yet supported")
-		}
-
 		// determine the routes needed to route traffic to services for this rule
 		routes, err := generateKongRoutesFromHTTPRouteRule(httproute, ruleNumber, rule)
 		if err != nil {
@@ -80,7 +75,7 @@ func ingressRulesFromHTTPRoute(result *ingressRules, httproute *gatewayv1alpha2.
 		}
 
 		// create a service and attach the routes to it
-		service := generateKongServiceFromHTTPRouteBackendRef(result, httproute, rule.BackendRefs[0])
+		service := generateKongServiceFromHTTPRouteBackendRef(result, httproute, rule.BackendRefs...)
 		service.Routes = append(service.Routes, routes...)
 
 		// cache the service to avoid duplicates in further loop iterations
@@ -215,7 +210,10 @@ func generateKongRoutesFromHTTPRouteRule(httproute *gatewayv1alpha2.HTTPRoute, r
 
 // generateKongServiceFromHTTPRouteBackendRef converts a provided backendRef for an HTTPRoute
 // into a kong.Service so that routes for that object can be attached to the Service.
-func generateKongServiceFromHTTPRouteBackendRef(result *ingressRules, httproute *gatewayv1alpha2.HTTPRoute, backendRef gatewayv1alpha2.HTTPBackendRef) kongstate.Service {
+func generateKongServiceFromHTTPRouteBackendRef(result *ingressRules, httproute *gatewayv1alpha2.HTTPRoute, backendRefs ...gatewayv1alpha2.HTTPBackendRef) kongstate.Service {
+	// FIXME - support multiple backendRefs
+	backendRef := backendRefs[0]
+
 	// determine the service namespace
 	// TODO: need to add validation to restrict namespaces in backendRefs
 	namespace := httproute.Namespace
