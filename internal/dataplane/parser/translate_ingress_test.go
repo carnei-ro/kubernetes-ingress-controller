@@ -5,6 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -272,8 +273,9 @@ func TestFromIngressV1beta1(t *testing.T) {
 
 		parsedInfo := p.ingressRulesFromIngressV1beta1()
 		assert.Equal(ingressRules{
-			ServiceNameToServices: make(map[string]kongstate.Service),
-			SecretNameToSNIs:      make(map[string][]string),
+			ServiceNameToServices:           make(map[string]kongstate.Service),
+			SecretNameToSNIs:                make(map[string][]string),
+			ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 		}, parsedInfo)
 	})
 	t.Run("simple ingress rule is parsed", func(t *testing.T) {
@@ -714,8 +716,9 @@ func TestFromIngressV1(t *testing.T) {
 
 		parsedInfo := p.ingressRulesFromIngressV1()
 		assert.Equal(ingressRules{
-			ServiceNameToServices: make(map[string]kongstate.Service),
-			SecretNameToSNIs:      make(map[string][]string),
+			ServiceNameToServices:           make(map[string]kongstate.Service),
+			SecretNameToSNIs:                make(map[string][]string),
+			ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 		}, parsedInfo)
 	})
 	t.Run("simple ingress rule is parsed", func(t *testing.T) {

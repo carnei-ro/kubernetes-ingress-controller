@@ -80,7 +80,7 @@ func (p *Parser) Build() (*kongstate.KongState, error) {
 	}
 
 	// generate Upstreams and Targets from service defs
-	result.Upstreams = getUpstreams(p.logger, p.storer, ingressRules.ServiceNameToServices)
+	result.Upstreams = getUpstreams(p.logger, p.storer, ingressRules.ServiceNameToServices, ingressRules.ServiceNameToRedundantUpstreams)
 
 	// merge KongIngress with Routes, Services and Upstream
 	result.FillOverrides(p.logger, p.storer)
@@ -257,7 +257,11 @@ func findPort(svc *corev1.Service, wantPort kongstate.PortDef) (*corev1.ServiceP
 }
 
 func getUpstreams(
-	log logrus.FieldLogger, s store.Storer, serviceMap map[string]kongstate.Service) []kongstate.Upstream {
+	log logrus.FieldLogger,
+	s store.Storer,
+	serviceMap map[string]kongstate.Service,
+	redundantServiceMap map[string][]*corev1.Service,
+) []kongstate.Upstream {
 	upstreamDedup := make(map[string]struct{}, len(serviceMap))
 	var empty struct{}
 	upstreams := make([]kongstate.Upstream, 0, len(serviceMap))
@@ -272,6 +276,21 @@ func getUpstreams(
 				log.WithField("service_name", *service.Name).Warnf("skipping service - getServiceEndpoints failed: %v", err)
 			}
 
+			// some (kong) services may have any number of redundant Kubernetes Services
+			// which will also be used as upstream targets for load-balancing between
+			// multiple Services. This is mainly used by Gateway route APIs such as
+			// HTTPRoute, TCPRoute, UDPRoute, e.t.c. which have the ability to define
+			// multiple backend services.
+			redundantServices := redundantServiceMap[*service.Service.Name]
+			for _, svc := range redundantServices {
+				port, err := findPort(svc, service.Backend.Port)
+				if err != nil {
+					log.WithField("service_name", *service.Name).Warnf("skipping redundant kubernetes service %s/%s for upstream generation: %s", svc.Namespace, svc.Name, err)
+					continue
+				}
+				targets = append(targets, getServiceEndpoints(log, s, *svc, port)...)
+			}
+
 			upstream := kongstate.Upstream{
 				Upstream: kong.Upstream{
 					Name: kong.String(name),
@@ -280,6 +299,7 @@ func getUpstreams(
 				Targets: targets,
 			}
 			upstreams = append(upstreams, upstream)
+
 			upstreamDedup[name] = empty
 		}
 	}

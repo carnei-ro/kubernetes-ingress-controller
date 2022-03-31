@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/kong/go-kong/kong"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 
@@ -12,14 +13,16 @@ import (
 )
 
 type ingressRules struct {
-	SecretNameToSNIs      SecretNameToSNIs
-	ServiceNameToServices map[string]kongstate.Service
+	SecretNameToSNIs                SecretNameToSNIs
+	ServiceNameToServices           map[string]kongstate.Service
+	ServiceNameToRedundantUpstreams map[string][]*corev1.Service
 }
 
 func newIngressRules() ingressRules {
 	return ingressRules{
-		SecretNameToSNIs:      newSecretNameToSNIs(),
-		ServiceNameToServices: make(map[string]kongstate.Service),
+		SecretNameToSNIs:                newSecretNameToSNIs(),
+		ServiceNameToServices:           make(map[string]kongstate.Service),
+		ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 	}
 }
 
@@ -32,6 +35,9 @@ func mergeIngressRules(objs ...ingressRules) ingressRules {
 		}
 		for k, v := range obj.ServiceNameToServices {
 			result.ServiceNameToServices[k] = v
+		}
+		for k, v := range obj.ServiceNameToRedundantUpstreams {
+			result.ServiceNameToRedundantUpstreams[k] = v
 		}
 	}
 	return result

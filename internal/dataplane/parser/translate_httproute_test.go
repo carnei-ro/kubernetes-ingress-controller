@@ -30,8 +30,9 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 		{
 			msg: "an empty list of HTTPRoutes should produce no ingress rules",
 			expected: ingressRules{
-				SecretNameToSNIs:      SecretNameToSNIs{},
-				ServiceNameToServices: make(map[string]kongstate.Service),
+				SecretNameToSNIs:                SecretNameToSNIs{},
+				ServiceNameToServices:           make(map[string]kongstate.Service),
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 		},
 		{
@@ -108,6 +109,7 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 						K8sService: corev1.Service{},
 					},
 				},
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 		},
 		{
@@ -138,8 +140,9 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 				},
 			}},
 			expected: ingressRules{
-				SecretNameToSNIs:      SecretNameToSNIs{},
-				ServiceNameToServices: make(map[string]kongstate.Service),
+				SecretNameToSNIs:                SecretNameToSNIs{},
+				ServiceNameToServices:           make(map[string]kongstate.Service),
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 			errs: []error{
 				fmt.Errorf("no match rules or hostnames specified"),
@@ -220,6 +223,7 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 						K8sService: corev1.Service{},
 					},
 				},
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 		},
 		{
@@ -238,8 +242,9 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 				},
 			}},
 			expected: ingressRules{
-				SecretNameToSNIs:      SecretNameToSNIs{},
-				ServiceNameToServices: make(map[string]kongstate.Service),
+				SecretNameToSNIs:                SecretNameToSNIs{},
+				ServiceNameToServices:           make(map[string]kongstate.Service),
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 			errs: []error{
 				fmt.Errorf("no rules provided"),
@@ -278,8 +283,9 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 				},
 			}},
 			expected: ingressRules{
-				SecretNameToSNIs:      SecretNameToSNIs{},
-				ServiceNameToServices: make(map[string]kongstate.Service),
+				SecretNameToSNIs:                SecretNameToSNIs{},
+				ServiceNameToServices:           make(map[string]kongstate.Service),
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 			errs: []error{
 				fmt.Errorf("query param matches are not yet supported"),
@@ -360,6 +366,7 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 						K8sService: corev1.Service{},
 					},
 				},
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 		},
 		{
@@ -437,6 +444,7 @@ func Test_ingressRulesFromHTTPRoutes(t *testing.T) {
 						K8sService: corev1.Service{},
 					},
 				},
+				ServiceNameToRedundantUpstreams: make(map[string][]*corev1.Service),
 			},
 		},
 	} {

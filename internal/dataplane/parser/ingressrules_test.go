@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1beta1"
 
 	"github.com/kong/kubernetes-ingress-controller/v2/internal/dataplane/kongstate"
@@ -18,8 +19,9 @@ func TestMergeIngressRules(t *testing.T) {
 		{
 			name: "empty list",
 			wantOutput: &ingressRules{
-				SecretNameToSNIs:      map[string][]string{},
-				ServiceNameToServices: map[string]kongstate.Service{},
+				SecretNameToSNIs:                map[string][]string{},
+				ServiceNameToServices:           map[string]kongstate.Service{},
+				ServiceNameToRedundantUpstreams: map[string][]*corev1.Service{},
 			},
 		},
 		{
@@ -28,8 +30,9 @@ func TestMergeIngressRules(t *testing.T) {
 				{}, {}, {},
 			},
 			wantOutput: &ingressRules{
-				SecretNameToSNIs:      map[string][]string{},
-				ServiceNameToServices: map[string]kongstate.Service{},
+				SecretNameToSNIs:                map[string][]string{},
+				ServiceNameToServices:           map[string]kongstate.Service{},
+				ServiceNameToRedundantUpstreams: map[string][]*corev1.Service{},
 			},
 		},
 		{
@@ -41,8 +44,9 @@ func TestMergeIngressRules(t *testing.T) {
 				},
 			},
 			wantOutput: &ingressRules{
-				SecretNameToSNIs:      map[string][]string{"a": {"b", "c"}, "d": {"e", "f"}},
-				ServiceNameToServices: map[string]kongstate.Service{"1": {Namespace: "potato"}},
+				SecretNameToSNIs:                map[string][]string{"a": {"b", "c"}, "d": {"e", "f"}},
+				ServiceNameToServices:           map[string]kongstate.Service{"1": {Namespace: "potato"}},
+				ServiceNameToRedundantUpstreams: map[string][]*corev1.Service{},
 			},
 		},
 		{
@@ -60,8 +64,9 @@ func TestMergeIngressRules(t *testing.T) {
 				},
 			},
 			wantOutput: &ingressRules{
-				SecretNameToSNIs:      map[string][]string{"a": {"b", "c"}, "d": {"e", "f"}, "g": {"h"}},
-				ServiceNameToServices: map[string]kongstate.Service{"1": {Namespace: "potato"}, "2": {Namespace: "carrot"}},
+				SecretNameToSNIs:                map[string][]string{"a": {"b", "c"}, "d": {"e", "f"}, "g": {"h"}},
+				ServiceNameToServices:           map[string]kongstate.Service{"1": {Namespace: "potato"}, "2": {Namespace: "carrot"}},
+				ServiceNameToRedundantUpstreams: map[string][]*corev1.Service{},
 			},
 		},
 		{
@@ -75,8 +80,9 @@ func TestMergeIngressRules(t *testing.T) {
 				},
 			},
 			wantOutput: &ingressRules{
-				SecretNameToSNIs:      map[string][]string{"a": {"b", "c", "d", "e"}},
-				ServiceNameToServices: map[string]kongstate.Service{},
+				SecretNameToSNIs:                map[string][]string{"a": {"b", "c", "d", "e"}},
+				ServiceNameToServices:           map[string]kongstate.Service{},
+				ServiceNameToRedundantUpstreams: map[string][]*corev1.Service{},
 			},
 		},
 		{
@@ -90,8 +96,9 @@ func TestMergeIngressRules(t *testing.T) {
 				},
 			},
 			wantOutput: &ingressRules{
-				SecretNameToSNIs:      map[string][]string{},
-				ServiceNameToServices: map[string]kongstate.Service{"svc-name": {Namespace: "new"}},
+				SecretNameToSNIs:                map[string][]string{},
+				ServiceNameToServices:           map[string]kongstate.Service{"svc-name": {Namespace: "new"}},
+				ServiceNameToRedundantUpstreams: map[string][]*corev1.Service{},
 			},
 		},
 	} {

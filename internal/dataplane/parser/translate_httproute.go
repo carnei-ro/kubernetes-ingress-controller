@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/kong/go-kong/kong"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/kong/kubernetes-ingress-controller/v2/internal/dataplane/kongstate"
@@ -75,11 +77,17 @@ func ingressRulesFromHTTPRoute(result *ingressRules, httproute *gatewayv1alpha2.
 		}
 
 		// create a service and attach the routes to it
-		service := generateKongServiceFromHTTPRouteBackendRef(result, httproute, rule.BackendRefs...)
+		service, redundantServices, err := generateKongServiceFromHTTPRouteBackendRef(result, httproute, rule.BackendRefs...)
+		if err != nil {
+			return err
+		}
 		service.Routes = append(service.Routes, routes...)
 
 		// cache the service to avoid duplicates in further loop iterations
 		result.ServiceNameToServices[*service.Service.Name] = service
+		if len(redundantServices) > 0 {
+			result.ServiceNameToRedundantUpstreams[*service.Service.Name] = redundantServices
+		}
 	}
 
 	return nil
@@ -210,8 +218,10 @@ func generateKongRoutesFromHTTPRouteRule(httproute *gatewayv1alpha2.HTTPRoute, r
 
 // generateKongServiceFromHTTPRouteBackendRef converts a provided backendRef for an HTTPRoute
 // into a kong.Service so that routes for that object can be attached to the Service.
-func generateKongServiceFromHTTPRouteBackendRef(result *ingressRules, httproute *gatewayv1alpha2.HTTPRoute, backendRefs ...gatewayv1alpha2.HTTPBackendRef) kongstate.Service {
-	// FIXME - support multiple backendRefs
+func generateKongServiceFromHTTPRouteBackendRef(result *ingressRules, httproute *gatewayv1alpha2.HTTPRoute, backendRefs ...gatewayv1alpha2.HTTPBackendRef) (kongstate.Service, []*corev1.Service, error) {
+	if len(backendRefs) == 0 {
+		return kongstate.Service{}, nil, fmt.Errorf("no backendRefs found for HTTPRoute %s/%s", httproute.Namespace, httproute.Name)
+	}
 	backendRef := backendRefs[0]
 
 	// determine the service namespace
@@ -253,5 +263,31 @@ func generateKongServiceFromHTTPRouteBackendRef(result *ingressRules, httproute 
 		}
 	}
 
-	return service
+	if len(backendRefs) > 1 {
+		redundantBackendRefs := backendRefs[1:]
+		redundantServices := make([]*corev1.Service, len(redundantBackendRefs))
+		for i, backendRef := range redundantBackendRefs {
+			namespace := httproute.Namespace
+			if backendRef.Namespace != nil && *backendRef.Namespace != "" {
+				namespace = string(*backendRef.Namespace)
+			}
+
+			redundantServices[i] = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      string(backendRef.Name),
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{{
+						Protocol: corev1.ProtocolTCP,
+						Port:     int32(*backendRef.Port),
+					}},
+				},
+			}
+		}
+
+		return service, redundantServices, nil
+	}
+
+	return service, nil, nil
 }

@@ -57,6 +57,11 @@
 
 #### Added
 
+- `HTTPRoute` resources now support multiple `backendRefs` with a round-robin
+  load-balancing strategy applied across the `Endpoints` or the `Services`
+  (depends on whether the `ingress.kubernetes.io/service-upstream` annotation
+  has been set).
+  [#2166](https://github.com/Kong/kubernetes-ingress-controller/issues/2166)
 - `Gateway` resources which have a `LoadBalancer` address among their list of
   addresses will have those addresses listed on the top for convenience, and
   so that those addresses are made prominent in the `kubectl get gateways`
